@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LoopDesk Transaction Workspace</title>
+  <title>Sync2Loop Transaction Workspace</title>
   <style>
     :root {
       --ink: #17212b;
@@ -1056,7 +1056,7 @@
       <div class="brand">
         <div class="brand-mark">L</div>
         <div>
-          <strong style="color:var(--ink)">LoopDesk</strong>
+          <strong style="color:var(--ink)">Sync2Loop</strong>
           <span>Secure transaction demo</span>
         </div>
       </div>
@@ -1082,7 +1082,7 @@
       <div class="brand">
         <div class="brand-mark">L</div>
         <div>
-          <strong>LoopDesk</strong>
+          <strong>Sync2Loop</strong>
           <span>Transaction command center</span>
         </div>
       </div>
@@ -1134,7 +1134,7 @@
             <div>
               <div class="eyebrow">Today in your transaction pipeline</div>
               <h1>Keep every offer, form, signer, and deadline in one working view.</h1>
-              <p>LoopDesk is an original real estate transaction prototype inspired by loop-based workflows: document packets, signing progress, compliance checks, and team activity stay visible without leaving the dashboard.</p>
+              <p>Sync2Loop is an original real estate transaction prototype inspired by loop-based workflows: document packets, signing progress, compliance checks, and team activity stay visible without leaving the dashboard.</p>
             </div>
             <div class="hero-stats">
               <div class="stat"><strong id="activeCount">7</strong><span>Active loops</span></div>
@@ -1376,11 +1376,11 @@
 
   <script>
     const storageKeys = {
-      loops: "loopdesk.loops.v1",
-      session: "loopdesk.session.v1",
-      listings: "loopdesk.listings.v2",
-      legacyListings: "loopdesk.listings.v1",
-      signatures: "loopdesk.signatures.v1"
+      loops: "Sync2Loop.loops.v1",
+      session: "Sync2Loop.session.v1",
+      listings: "Sync2Loop.listings.v2",
+      legacyListings: "Sync2Loop.listings.v1",
+      signatures: "Sync2Loop.signatures.v1"
     };
 
     const seedLoops = [
@@ -1954,7 +1954,7 @@
         saveListings();
         renderListings();
         const subject = encodeURIComponent(`Document returned: ${document.name}`);
-        const body = encodeURIComponent(`Hello,\n\n${document.name} was returned for changes.\n\nNote: ${document.note}\n\nPlease update and resend it through LoopDesk.`);
+        const body = encodeURIComponent(`Hello,\n\n${document.name} was returned for changes.\n\nNote: ${document.note}\n\nPlease update and resend it through Sync2Loop.`);
         window.location.href = `mailto:${encodeURIComponent(document.recipient)}?subject=${subject}&body=${body}`;
         showToast("Return email prepared with your note");
         return;
@@ -2298,7 +2298,7 @@
 
     document.querySelector("#exportBtn").addEventListener("click", () => {
       const loop = loops[state.active];
-      const report = `LoopDesk transaction summary\n\n${loop.address}\n${loop.role}\n${loop.close}\nAgent: ${loop.agent}\n\nDocuments:\n${loop.docs.map(doc => `- ${doc[0]} (${doc[2]})`).join("\n")}`;
+      const report = `Sync2Loop transaction summary\n\n${loop.address}\n${loop.role}\n${loop.close}\nAgent: ${loop.agent}\n\nDocuments:\n${loop.docs.map(doc => `- ${doc[0]} (${doc[2]})`).join("\n")}`;
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([report], { type: "text/plain" }));
       link.download = `${loop.address.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}-summary.txt`;
