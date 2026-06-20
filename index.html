@@ -1,5 +1,9 @@
 <!doctype html>
 <html lang="en">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  emailjs.init({ publicKey: t1WoMxSsYIGzIpiRD });
+</script>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2650,13 +2654,14 @@
       renderSignatures();
     });
 
-    document.querySelector("#sendSignatureRequest").addEventListener("click", () => {
+    document.querySelector("#sendSignatureRequest").addEventListener("click", async () => {
       const signers = state.signatureSigners
         .filter(signer => signer.email.trim())
         .map((signer, index) => ({ order: index + 1, role: signer.role, email: signer.email.trim() }));
       if (!state.signatureDraft) return showToast("Upload a document first");
       if (!signers.length) return showToast("Enter at least one signer email address");
       if (!state.signatureFields.length) return showToast("Place at least one signing field");
+      try { await Promise.all(signers.map(signer => emailjs.send(service_w8cmt4g, template_jiaob8s, { to_email: signer.email, to_name: signer.role, document_name: state.signatureDraft.name, signing_link: "https://neal-ayeen.github.io/Sync2Loop/" }) )); } catch (error) { showToast("Email could not be sent. Check your EmailJS IDs."); return; }
       signatures.sent.unshift({ name: state.signatureDraft.name, signers, fields: state.signatureFields.length });
       saveSignatures();
       clearSignaturePreview();
