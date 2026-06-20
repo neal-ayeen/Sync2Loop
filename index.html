@@ -888,6 +888,16 @@
     .signature-upload { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 0; align-items: end; }
     .signature-upload label { display: grid; gap: 5px; font-size: 13px; font-weight: 800; }
     .signature-upload input, .signature-upload select { padding: 9px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .recipient-signing-page { min-height: 100vh; padding: 36px 20px; background: #eef3f7; color: var(--ink); }
+    .recipient-signing-shell { width: min(1100px, 100%); margin: 0 auto; }
+    .recipient-signing-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 18px; }
+    .recipient-signing-head h1 { margin: 6px 0 7px; font-size: clamp(28px, 4vw, 42px); }
+    .recipient-signing-card { padding: 16px; }
+    .recipient-document { width: 100%; height: min(70vh, 820px); border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+    .recipient-signing-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-top: 16px; }
+    .recipient-signing-actions label { display: grid; gap: 6px; font-weight: 800; font-size: 13px; }
+    .recipient-signing-actions input { height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+    .recipient-status { padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: var(--muted); }
     #signerRoutes { display: flex; flex-wrap: wrap; gap: 8px; }
     .signer-route { --signee-color: #2f6fbd; flex: 1 1 220px; padding: 10px; border: 1px solid var(--line); border-left: 4px solid var(--signee-color); border-radius: 6px; background: var(--soft); cursor: pointer; }
     .signer-route.active { border-color: var(--signee-color); background: #fff; box-shadow: 0 0 0 2px color-mix(in srgb, var(--signee-color) 16%, transparent); }
@@ -1029,6 +1039,9 @@
       .signature-queue {
         grid-template-columns: 1fr;
       }
+
+      .recipient-signing-head,
+      .recipient-signing-actions { grid-template-columns: 1fr; display: grid; }
 
       .sign-tools {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1400,6 +1413,15 @@
   </div>
 
   <script>
+    // This is a browser-safe Supabase publishable key. Never place the secret key here.
+    const SUPABASE_URL = "https://vcprejugcvsjgxzwawgj.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-51p2YMEe0NFmZ9ETSeXow_L0wKW8Nk";
+    const SUPABASE_HEADERS = {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+    };
+
     const storageKeys = {
       loops: "Sync2Loop.loops.v1",
       session: "Sync2Loop.session.v1",
@@ -1820,6 +1842,81 @@
       toast.classList.add("show");
       clearTimeout(window.toastTimer);
       window.toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+
+    async function fileToBase64(file) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+      return String(dataUrl).split(",")[1];
+    }
+
+    function showRecipientSigningPage(token) {
+      const app = document.querySelector(".app");
+      const authScreen = document.querySelector("#authScreen");
+      app.classList.add("hidden");
+      authScreen.classList.add("hidden");
+
+      const page = document.createElement("main");
+      page.className = "recipient-signing-page";
+      page.innerHTML = `
+        <div class="recipient-signing-shell">
+          <div class="recipient-signing-head">
+            <div><div class="eyebrow">Sync2Loop secure signing</div><h1>Review and sign your document</h1><p id="recipientSummary">Loading your signing request...</p></div>
+            <a class="ghost-btn" id="openRecipientDocument" target="_blank" rel="noopener" hidden>Open document</a>
+          </div>
+          <section class="panel recipient-signing-card" id="recipientSigningCard"><div class="recipient-status">Retrieving the protected document...</div></section>
+        </div>`;
+      document.body.append(page);
+
+      (async () => {
+        const card = page.querySelector("#recipientSigningCard");
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/get-signing-request?token=${encodeURIComponent(token)}`, { headers: SUPABASE_HEADERS });
+          const request = await response.json();
+          if (!response.ok) throw new Error(request.error || "This signing request is unavailable.");
+          document.querySelector("#recipientSummary").textContent = `${request.signerRole} signature requested for ${request.documentName}.`;
+          const openDocument = page.querySelector("#openRecipientDocument");
+          openDocument.href = request.documentUrl;
+          openDocument.hidden = false;
+          if (request.status === "completed") {
+            card.innerHTML = `<div class="recipient-status"><strong>This document has already been signed.</strong><br>Thank you. You can still open the document above.</div>`;
+            return;
+          }
+          card.innerHTML = `
+            <iframe class="recipient-document" src="${request.documentUrl}" title="${escapeHtml(request.documentName)}"></iframe>
+            <div class="recipient-signing-actions">
+              <label>Type your full name to confirm your signature<input id="recipientSignerName" autocomplete="name" placeholder="Your full name"></label>
+              <button class="primary-btn" id="completeRecipientSigning">Complete signing</button>
+            </div>`;
+          page.querySelector("#completeRecipientSigning").onclick = async () => {
+            const signerName = page.querySelector("#recipientSignerName").value.trim();
+            if (!signerName) return showToast("Type your full name before completing the signing request");
+            const button = page.querySelector("#completeRecipientSigning");
+            button.disabled = true;
+            button.textContent = "Saving...";
+            try {
+              const completeResponse = await fetch(`${SUPABASE_URL}/functions/v1/complete-signing-request`, {
+                method: "POST",
+                headers: SUPABASE_HEADERS,
+                body: JSON.stringify({ token, signerName })
+              });
+              const completeResult = await completeResponse.json();
+              if (!completeResponse.ok) throw new Error(completeResult.error || "The signature could not be saved.");
+              card.innerHTML = `<div class="recipient-status"><strong>Signing complete.</strong><br>Thank you, ${escapeHtml(signerName)}. Your completed request has been recorded.</div>`;
+            } catch (error) {
+              button.disabled = false;
+              button.textContent = "Complete signing";
+              showToast(error.message || "The signature could not be saved.");
+            }
+          };
+        } catch (error) {
+          card.innerHTML = `<div class="recipient-status"><strong>We could not open this signing request.</strong><br>${escapeHtml(error.message || "Check the link and try again.")}</div>`;
+        }
+      })();
     }
 
     function bindTaskButtons() {
@@ -2662,15 +2759,33 @@
       if (!signers.length) return showToast("Enter at least one signer email address");
       if (!state.signatureFields.length) return showToast("Place at least one signing field");
       try {
-        await Promise.all(signers.map(signer => emailjs.send("service_w8cmt4g", "template_jiaob8s", {
-          to_email: signer.email,
-          to_name: signer.role,
-          document_name: state.signatureDraft.name,
-          signing_link: "https://neal-ayeen.github.io/Sync2Loop/"
-        })));
+        const documentBase64 = await fileToBase64(state.signatureDraft.file);
+        const requestResults = await Promise.all(signers.map(async signer => {
+          const requestResponse = await fetch(`${SUPABASE_URL}/functions/v1/create-signing-request`, {
+            method: "POST",
+            headers: SUPABASE_HEADERS,
+            body: JSON.stringify({
+              documentName: state.signatureDraft.name,
+              documentBase64,
+              mimeType: state.signatureDraft.fileType,
+              signerEmail: signer.email,
+              signerRole: signer.role
+            })
+          });
+          const requestResult = await requestResponse.json();
+          if (!requestResponse.ok) throw new Error(requestResult.error || "Could not create the signing request.");
+          await emailjs.send("service_w8cmt4g", "template_jiaob8s", {
+            to_email: signer.email,
+            to_name: signer.role,
+            document_name: state.signatureDraft.name,
+            signing_link: requestResult.signingLink
+          });
+          return requestResult;
+        }));
+        if (!requestResults.length) throw new Error("No signing requests were created.");
       } catch (error) {
-        console.error("EmailJS send failed", error);
-        showToast("Email could not be sent. Check your EmailJS setup.");
+        console.error("Signature request failed", error);
+        showToast(`Request failed: ${error?.text || error?.message || "Unknown error"}`);
         return;
       }
       signatures.sent.unshift({ name: state.signatureDraft.name, signers, fields: state.signatureFields.length });
@@ -2681,12 +2796,17 @@
       state.signatureSigners = [{ role: "Buyer", email: "" }];
       state.activeSignee = 0;
       renderSignatures();
-      showToast("Signature request sent in this demo");
+      showToast("Signature request email sent");
     });
 
-    bindToastButtons();
-    updateAuthState();
-    render();
+    const recipientToken = new URLSearchParams(window.location.search).get("sign");
+    if (recipientToken) {
+      showRecipientSigningPage(recipientToken);
+    } else {
+      bindToastButtons();
+      updateAuthState();
+      render();
+    }
   </script>
 </body>
 </html>
