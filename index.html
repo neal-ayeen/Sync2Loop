@@ -1346,7 +1346,7 @@
                 <div class="signature-upload">
                   <div id="signerRoutes"></div>
                   <button class="ghost-btn" type="button" id="addSigneeBtn">+ Add signee</button>
-                  <label>Upload document<input id="signatureDocumentUpload" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"></label>
+                  <label>Upload document<input id="signatureDocumentUpload" type="file" accept="application/pdf,.pdf"></label>
                 </div>
               </div>
             </section>
@@ -1906,7 +1906,10 @@
               });
               const completeResult = await completeResponse.json();
               if (!completeResponse.ok) throw new Error(completeResult.error || "The signature could not be saved.");
-              card.innerHTML = `<div class="recipient-status"><strong>Signing complete.</strong><br>Thank you, ${escapeHtml(signerName)}. Your completed request has been recorded.</div>`;
+              const signedLink = completeResult.signedDocumentUrl
+                ? `<br><br><a class="primary-btn" href="${completeResult.signedDocumentUrl}" target="_blank" rel="noopener">Open signed PDF</a>`
+                : "";
+              card.innerHTML = `<div class="recipient-status"><strong>Signing complete.</strong><br>Thank you, ${escapeHtml(signerName)}. Your signed PDF has been filed.${signedLink}</div>`;
             } catch (error) {
               button.disabled = false;
               button.textContent = "Complete signing";
@@ -2424,6 +2427,11 @@
     document.querySelector("#documentUpload").addEventListener("change", event => {
       const file = event.target.files[0];
       if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".pdf")) {
+        event.target.value = "";
+        showToast("For signing, upload a PDF document");
+        return;
+      }
       const loop = loops[state.active];
       loop.docs.unshift([
         file.name,
